@@ -1,0 +1,18 @@
+objref ic_hold
+access filament_100000042 [0]
+ic_hold = new IClamp(0.5)
+
+objref ic_clamp
+access filament_100000042 [0]
+ic_clamp = new IClamp(0.5)
+
+Ihold= PARAM_ic_hold_amp
+Iclamp= PARAM_ic_clamp_amp
+
+ic_hold.del = 0
+ic_hold.dur = PARAM_tstop
+ic_hold.amp = Ihold
+
+ic_clamp.del = PARAM_ic_clamp_del
+ic_clamp.dur = PARAM_ic_clamp_dur
+ic_clamp.amp = Iclamp

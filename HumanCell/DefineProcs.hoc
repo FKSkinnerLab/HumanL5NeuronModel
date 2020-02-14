@@ -1,0 +1,644 @@
+proc turnclampoff() {
+	Iclamp = 0
+	ic_clamp.amp=Iclamp
+}
+
+proc turnclampon() {
+	Iclamp= PARAM_ic_clamp_amp
+	ic_clamp.amp=Iclamp
+}
+
+proc setclamp() {
+	Iclamp= $1
+	ic_clamp.amp=Iclamp
+}
+
+proc setclampdur() {
+	PARAM_ic_clamp_dur= $1
+	ic_clamp.dur = PARAM_ic_clamp_dur
+}
+
+proc block() {
+	gIhbar_opt=0
+	gSKv3_1bar_opt=0
+	gK_Pstbar_opt=0
+	gImbar_opt=0
+	gSK_E2bar_opt=0
+	gK_Tstbar_opt=0
+	gCa_LVAstbar_opt=0
+	gCa_HVAbar_opt=0
+	gNa_Et2_opt=0
+	gNaTa_t_soma_opt=0
+	gNaTa_t_apical_opt=0
+	reset()
+}
+
+proc unblock() {
+	gIhbar_opt=PARAM_gIhbar
+	gSKv3_1bar_opt=PARAM_gSKv3_1bar
+	gK_Pstbar_opt=PARAM_gK_Pstbar
+	gImbar_opt=PARAM_gImbar
+	gSK_E2bar_opt=PARAM_gSK_E2bar
+	gK_Tstbar_opt=PARAM_gK_Tstbar
+	gCa_LVAstbar_opt=PARAM_gCa_LVAsshiftbar
+	gCa_HVAbar_opt=PARAM_gCa_HVAbar
+	gNa_Et2_opt=PARAM_Nap_Et2
+	gNaTa_t_soma_opt=PARAM_NaTa_t_soma
+	gNaTa_t_apical_opt=PARAM_NaTa_t_apical
+	reset()
+}
+
+proc block_Na() {
+	gNa_Et2_opt=0
+	gNaTa_t_soma_opt=0
+	gNaTa_t_apical_opt=0
+	reset()
+}
+
+proc block_Ca() {
+	gCa_LVAstbar_opt=0
+	gCa_HVAbar_opt=0
+	reset()
+}
+
+proc block_K() {
+	gSKv3_1bar_opt=0
+	gK_Pstbar_opt=0
+	gImbar_opt=0
+	gSK_E2bar_opt=0
+	gK_Tstbar_opt=0
+	reset()
+}
+
+proc block_Ih() {
+	gIhbar_opt=0
+	reset()
+}
+
+proc setizap() {
+	tstop=$1+$2
+
+	setclamp(0)
+	access filament_100000042[0]
+	Zap= new Izap(0.5)
+	
+	Zap.del=$1
+	Zap.dur=$2
+	Zap.f0=$3
+	Zap.f1=$4
+	Zap.amp=$5
+
+	load_file("VoltageAndCurrentTrace_zap.ses")
+
+}
+
+proc recordizap() {
+	setizap($1,$2,$3,$4,$5)	
+
+	time= new Vector()
+	voltage= new Vector()
+	zapcurrent= new Vector()
+
+	time.record(&t)
+	voltage.record(&filament_100000042[0].v(0.5))
+	zapcurrent.record(&Zap.i)
+
+	run()
+
+	save_time= new File()
+	save_voltage= new File()
+	save_zapcurrent= new File()
+
+	sprint(title_time, "ZapData_time_%d_%d_%d_%d.csv", Zap.f0, Zap.f1, Zap.amp*100, Zap.dur)
+	sprint(title_voltage, "ZapData_voltage_%d_%d_%d_%d.csv", Zap.f0, Zap.f1, Zap.amp*100, Zap.dur)
+	sprint(title_zapcurrent, "ZapData_zapcurrent_%d_%d_%d_%d.csv", Zap.f0, Zap.f1, Zap.amp*100, Zap.dur)
+
+
+	save_time.wopen(title_time)
+	save_voltage.wopen(title_voltage)
+	save_zapcurrent.wopen(title_zapcurrent)
+
+	time.printf(save_time)
+	voltage.printf(save_voltage)
+	zapcurrent.printf(save_zapcurrent)
+
+	save_time.close()
+	save_voltage.close()
+	save_zapcurrent.close()
+
+	tstop=PARAM_tstop
+}
+
+proc noiserun() {
+	cvode.active(0)
+	dt= $2
+	tstop=$3
+	numstep=tstop/dt
+
+	NoiseFile= new File()
+	NoiseVector= new Vector(numstep)
+	NoiseVector
+	
+	sprint(noiseinput, "%s.dat", $s1)
+	NoiseFile.ropen(noiseinput)
+
+	for i=1, numstep {
+		NoiseVector.x[i-1]=$4+NoiseFile.scanvar()	
+	}
+
+	ic_clamp.del=0
+	ic_clamp.dur=1e9
+	NoiseVector.play(&ic_clamp.amp, dt)
+		
+	time= new Vector()
+	voltage= new Vector()
+	current= new Vector()
+
+	time.record(&t)
+	voltage.record(&filament_100000042[0].v(0.5))
+	current.record(&ic_clamp.i)
+
+	run()
+
+	save_time= new File()
+	save_voltage= new File()
+	save_current= new File()
+
+	sprint(title_time, "NoiseData_time_%s.csv", $s1)
+	sprint(title_voltage, "NoiseData_voltage_%s.csv", $s1)
+	sprint(title_current, "NoiseData_current_%s.csv", $s1)
+
+	save_time.wopen(title_time)
+	save_voltage.wopen(title_voltage)
+	save_current.wopen(title_current)
+
+	time.printf(save_time)
+	voltage.printf(save_voltage)
+	current.printf(save_current)
+
+	save_time.close()
+	save_voltage.close()
+	save_current.close()
+
+
+	cvode.active(1)
+	tstop=PARAM_tstop
+	NoiseVector.play_remove()
+	ic_clamp.del = PARAM_ic_clamp_del
+	ic_clamp.dur = PARAM_ic_clamp_dur
+	ic_clamp.amp = Iclamp
+}
+
+proc multnoiseruns() {
+	pw= new PWManager()
+	while (pw.count()>2) {
+		pw.close(pw.count()-1)
+	}
+
+	xopen("VoltageAndCurrentTrace_noise_full.ses")
+
+	for j=1,60 {
+		sprint(noiseinputmult, "%d_%s", j, $s1)
+		print noiseinputmult
+		noiserun(noiseinputmult,.01, 2500, 0.031)
+		print j
+	}
+}
+
+proc setizap_supra() {
+	tstop=$1+$2
+
+	setclamp(0)
+	access filament_100000042[0]
+	Zap= new Izap(0.5)
+	
+	Zap.del=$1
+	Zap.dur=$2
+	Zap.f0=$3
+	Zap.f1=$4
+	Zap.amp=$5
+
+	load_file("VoltageAndCurrentTrace_zap.ses")
+}
+
+proc recordizap_supra() {
+	setizap_supra($1,$2,$3,$4,$5)	
+
+	cvode.active(0)
+	dt=.01
+	numstep=tstop/dt
+
+
+	time= new Vector()
+	voltage= new Vector()
+	zapcurrent= new Vector()
+
+	time.record(&t)
+	voltage.record(&filament_100000042[0].v(0.5))
+	zapcurrent.record(&Zap.i)
+
+	run()
+
+	save_time= new File()
+	save_voltage= new File()
+	save_zapcurrent= new File()
+
+	sprint(title_time, "ZapData_time_%d_%d_%d_%d.csv", Zap.f0, Zap.f1, Zap.amp*100, Zap.dur)
+	sprint(title_voltage, "ZapData_voltage_%d_%d_%d_%d.csv", Zap.f0, Zap.f1, Zap.amp*100, Zap.dur)
+	sprint(title_zapcurrent, "ZapData_zapcurrent_%d_%d_%d_%d.csv", Zap.f0, Zap.f1, Zap.amp*100, Zap.dur)
+
+
+	save_time.wopen(title_time)
+	save_voltage.wopen(title_voltage)
+	save_zapcurrent.wopen(title_zapcurrent)
+
+	time.printf(save_time)
+	voltage.printf(save_voltage)
+	zapcurrent.printf(save_zapcurrent)
+
+	save_time.close()
+	save_voltage.close()
+	save_zapcurrent.close()
+
+	cvode.active(1)
+	tstop=PARAM_tstop
+}
+
+proc setizap_distal() {
+	tstop=$1+$2
+
+	setclamp(0)
+	access filament_100000042[203]
+	Zap= new Izap(0.5)
+	
+	Zap.del=$1
+	Zap.dur=$2
+	Zap.f0=$3
+	Zap.f1=$4
+	Zap.amp=$5
+
+	load_file("VoltageAndCurrentTrace_zap.ses")
+}
+
+proc recordizap_distal() {
+	setizap_distal($1,$2,$3,$4,$5)	
+
+	time= new Vector()
+	voltage= new Vector()
+	zapcurrent= new Vector()
+
+	time.record(&t)
+	voltage.record(&filament_100000042[203].v(0.5))
+	zapcurrent.record(&Zap.i)
+
+	run()
+
+	save_time= new File()
+	save_voltage= new File()
+	save_zapcurrent= new File()
+
+	sprint(title_time, "ZapData_time_%d_%d_%d_%d.csv", Zap.f0, Zap.f1, Zap.amp*100, Zap.dur)
+	sprint(title_voltage, "ZapData_voltage_%d_%d_%d_%d.csv", Zap.f0, Zap.f1, Zap.amp*100, Zap.dur)
+	sprint(title_zapcurrent, "ZapData_zapcurrent_%d_%d_%d_%d.csv", Zap.f0, Zap.f1, Zap.amp*100, Zap.dur)
+
+	save_time.wopen(title_time)
+	save_voltage.wopen(title_voltage)
+	save_zapcurrent.wopen(title_zapcurrent)
+
+	time.printf(save_time)
+	voltage.printf(save_voltage)
+	zapcurrent.printf(save_zapcurrent)
+
+	save_time.close()
+	save_voltage.close()
+	save_zapcurrent.close()
+
+	tstop=PARAM_tstop
+}
+
+proc SwapToKole() {
+	forsec Soma {
+		insert Ih_mod
+		gIhbar_Ih= 0
+		gbar_Ih_mod= gIhbar_opt
+	}
+	
+	forsec Apical {
+		dist=distance(.5)
+		insert Ih_mod
+ 		gbar_Ih_mod=gIhbar_opt*(-0.8696+2.0870*exp(3.6161*(dist/decay)))
+		gIhbar_Ih= 0
+	}
+	
+	forsec Basilar {
+		insert Ih_mod
+		gIhbar_Ih=0
+		gbar_Ih_mod=gIhbar_opt
+	}
+}
+
+proc ResetHChannel() {
+	forsec Soma {
+		gIhbar_Ih= gIhbar_opt
+		gbar_Ih_mod= 0
+	}
+	
+	forsec Apical {
+		dist=distance(.5)
+ 		gbar_Ih_mod= 0
+		gIhbar_Ih= gIhbar_opt*(-0.8696+2.0870*exp(3.6161*(dist/decay)))
+	}
+	
+	forsec Basilar {
+		gIhbar_Ih= gIhbar_opt
+		gbar_Ih_mod=0
+	}
+
+}
+
+proc changepassive() {
+    	forall {
+        	cm = $1
+        	Ra = $2
+        	g_pas = $3
+        	e_pas = -$4
+    	}
+}
+
+proc setizap_DC() {
+	tstop=$1+$2
+
+	setclamp($6)
+	ic_clamp.del=0
+	ic_clamp.dur=tstop
+
+	access filament_100000042[0]
+	Zap= new Izap(0.5)
+	
+	Zap.del=$1
+	Zap.dur=$2
+	Zap.f0=$3
+	Zap.f1=$4
+	Zap.amp=$5
+
+	load_file("VoltageAndcurrentTrace_zap_laptop.ses")
+
+}
+
+proc recordizap_DC() {
+	setizap_DC($1,$2,$3,$4,$5,$6)	
+
+	time= new Vector()
+	voltage= new Vector()
+	zapcurrent= new Vector()
+
+	time.record(&t)
+	voltage.record(&filament_100000042[0].v(0.5))
+	zapcurrent.record(&Zap.i)
+
+	run()
+
+	save_time= new File()
+	save_voltage= new File()
+	save_zapcurrent= new File()
+
+	sprint(title_time, "ZapData_time_%d_%d_%d_%d_%d.csv", Zap.f0, Zap.f1, Zap.amp*100, Zap.dur, ic_clamp.amp*100)
+	sprint(title_voltage, "ZapData_voltage_%d_%d_%d_%d_%d.csv", Zap.f0, Zap.f1, Zap.amp*100, Zap.dur, ic_clamp.amp*100)
+	sprint(title_zapcurrent, "ZapData_zapcurrent_%d_%d_%d_%d_%d.csv", Zap.f0, Zap.f1, Zap.amp*100, Zap.dur, ic_clamp.amp*100)
+
+
+	save_time.wopen(title_time)
+	save_voltage.wopen(title_voltage)
+	save_zapcurrent.wopen(title_zapcurrent)
+
+	time.printf(save_time)
+	voltage.printf(save_voltage)
+	zapcurrent.printf(save_zapcurrent)
+
+	save_time.close()
+	save_voltage.close()
+	save_zapcurrent.close()
+
+	tstop=PARAM_tstop
+}
+
+
+proc recordclamp_TTX() {
+	tstop=4080.6
+	block_Na()
+	tstop=4080.6
+
+	ic_clamp.del=$1
+	ic_clamp.dur=$2
+	ic_clamp.amp=$3
+
+	time= new Vector()
+	voltage= new Vector()
+
+	time.record(&t)
+	voltage.record(&filament_100000042[0].v(0.5))
+
+	run()
+
+	save_time= new File()
+	save_voltage= new File()
+
+	sprint(title_time, "CurrentClampData_TTX_time_%d_%d_%d.csv", ic_clamp.del, ic_clamp.dur, ic_clamp.amp*100)
+	sprint(title_voltage, "CurrentClampData_TTX_voltage_%d_%d_%d.csv", ic_clamp.del, ic_clamp.dur, ic_clamp.amp*100)
+
+	save_time.wopen(title_time)
+	save_voltage.wopen(title_voltage)
+
+	time.printf(save_time)
+	voltage.printf(save_voltage)
+
+	save_time.close()
+	save_voltage.close()
+
+	tstop=PARAM_tstop
+}
+
+proc recordclamp() {
+	tstop=4080.6
+	unblock()
+	tstop=4080.6
+
+	ic_clamp.del=$1
+	ic_clamp.dur=$2
+	ic_clamp.amp=$3
+
+	time= new Vector()
+	voltage= new Vector()
+
+	time.record(&t)
+	voltage.record(&filament_100000042[0].v(0.5))
+
+	run()
+
+	save_time= new File()
+	save_voltage= new File()
+
+	sprint(title_time, "CurrentClampData_time_%d_%d_%d.csv", ic_clamp.del, ic_clamp.dur, ic_clamp.amp*100)
+	sprint(title_voltage, "CurrentClampData_voltage_%d_%d_%d.csv", ic_clamp.del, ic_clamp.dur, ic_clamp.amp*100)
+
+	save_time.wopen(title_time)
+	save_voltage.wopen(title_voltage)
+
+	time.printf(save_time)
+	voltage.printf(save_voltage)
+
+	save_time.close()
+	save_voltage.close()
+
+	tstop=PARAM_tstop
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+proc reset() {
+filament_100000042[0] distance()
+
+    	forall {
+        	insert pas
+        	cm = cm_opt
+        	Ra = Ra_opt
+        	g_pas = g_pas_opt
+        	e_pas = -e_pas_opt
+    	}
+
+	forsec Soma {
+		insert Ca_LVAst 
+	  	insert Ca_HVA 
+		insert SKv3_1
+		insert K_Pst
+		insert K_Tst
+		insert SK_E2
+		insert CaDynamics_E2
+		// insert Im
+		insert Ih
+
+		insert Nap_Et2 
+	  	insert NaTa_t
+
+
+  		gCa_LVAstbar_Ca_LVAst = gCa_LVAstbar_opt 
+  		gCa_HVAbar_Ca_HVA = gCa_HVAbar_opt
+		decay_CaDynamics_E2= 460.0
+		gamma_CaDynamics_E2= 0.000501
+		gSKv3_1bar_SKv3_1= gSKv3_1bar_opt
+		gK_Pstbar_K_Pst= gK_Pstbar_opt
+		gK_Tstbar_K_Tst= gK_Tstbar_opt
+		gSK_E2bar_SK_E2= gSK_E2bar_opt
+		// gImbar_Im= gImbar_opt
+		gIhbar_Ih= gIhbar_opt
+
+		gNap_Et2bar_Nap_Et2= gNa_Et2_opt
+		gNaTa_tbar_NaTa_t= gNaTa_t_soma_opt
+
+		cm=1
+	}
+
+	forsec Apical { 
+		insert Ca_LVAst 
+	  	insert Ca_HVA 
+		insert SKv3_1
+		// insert K_Pst
+		// insert K_Tst
+		insert SK_E2
+		insert CaDynamics_E2
+		insert Im
+		insert Ih
+
+  		insert NaTa_t 
+
+		decay_CaDynamics_E2= 460.0
+		gamma_CaDynamics_E2= 0.000501
+		gSKv3_1bar_SKv3_1= gSKv3_1bar_opt
+		// gK_Pstbar_K_Pst= gK_Pstbar_opt
+		gSK_E2bar_SK_E2= gSK_E2bar_opt
+		gImbar_Im= gImbar_opt
+		
+		// gIhbar_Ih= gIhbar_opt
+		dist=distance(.5)
+		// gIhbar_Ih=gIhbar_opt*exp(-1*dist/decay)
+		gIhbar_Ih=gIhbar_opt*(-0.8696+2.0870*exp(3.6161*(dist/decay)))
+
+  		// gCa_LVAstbar_Ca_LVAst = gCa_LVAstbar_opt 
+  		// gCa_HVAbar_Ca_HVA = gCa_HVAbar_opt
+		//if (dist>685 && dist<885) {
+		if (dist>360 && dist<600) {
+  			gCa_LVAstbar_Ca_LVAst = 100*gCa_LVAstbar_opt 
+  			gCa_HVAbar_Ca_HVA = 10*gCa_HVAbar_opt
+		} else{
+			gCa_LVAstbar_Ca_LVAst = gCa_LVAstbar_opt 
+  			gCa_HVAbar_Ca_HVA = gCa_HVAbar_opt
+		}
+
+		gNaTa_tbar_NaTa_t=gNaTa_t_apical_opt
+	}
+
+	forsec Basilar {
+		// insert Ca_LVAst 
+	  	// insert Ca_HVA 
+		// insert SKv3_1
+		// insert K_Pst
+		// insert K_Tst
+		// insert SK_E2
+		// insert CaDynamics_E2
+		// insert Im
+		insert Ih
+
+		// decay_CaDynamics_E2= 460.0
+		// gamma_CaDynamics_E2= 0.000501
+		// gSKv3_1bar_SKv3_1= gSKv3_1bar_opt
+		// gK_Pstbar_K_Pst= gK_Pstbar_opt
+		// gSK_E2bar_SK_E2= gSK_E2bar_opt
+		// gImbar_Im= gImbar_opt
+		gIhbar_Ih= gIhbar_opt
+	}
+
+	/* 
+	forsec Axonal {
+		insert SKv3_1
+		insert K_Pst
+		insert SK_E2
+		insert CaDynamics_E2
+		insert Im
+		insert Ih
+
+		decay_CaDynamics_E2= 460.0
+		gamma_CaDynamics_E2= 0.000501
+		gSKv3_1bar_SKv3_1= gSKv3_1bar_opt
+		gK_Pstbar_K_Pst= gK_Pstbar_opt
+		gSK_E2bar_SK_E2= gSK_E2bar_opt
+		gImbar_Im= gImbar_opt
+		gIhbar_Ih= gIhbar_opt
+	} 
+	*/
+}

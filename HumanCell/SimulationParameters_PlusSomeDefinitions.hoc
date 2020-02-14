@@ -1,0 +1,29 @@
+PARAcelsius=34
+PARAM_v_init=-72
+PARAM_tstop = 10000
+
+PARAM_ic_hold_amp=0
+
+PARAM_ic_clamp_del=1164.7
+PARAM_ic_clamp_dur=599
+PARAM_ic_clamp_amp=0.3
+
+cvode_active(1)
+cvode.atol(1e-05)
+
+tstop=PARAM_tstop
+v_init=PARAM_v_init
+
+objref Zap
+objref time
+objref voltage
+objref zapcurrent
+objref current
+objref save_time, save_voltage, save_zapcurrent, save_current
+strdef title_time, title_voltage, title_zapcurrent, title_current
+objref NoiseFile
+objref NoiseVector
+strdef noiseinput
+strdef noiseinputmult
+objref pw 
+pw= new PWManager()

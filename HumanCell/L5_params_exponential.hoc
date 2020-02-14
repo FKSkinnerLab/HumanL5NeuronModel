@@ -1,0 +1,37 @@
+PARAM_decay=1000
+
+PARAM_Ra= 501.6
+PARAM_cm= 1.6226
+PARAM_e_pas= 84.325
+PARAM_g_pas= 1.75e-05
+
+PARAM_gCa_LVAstbar=0.00099587
+PARAM_gCa_HVAbar=1.7838e-09
+
+PARAM_gIhbar=5.0723e-05
+PARAM_gImbar=.0002
+
+PARAM_gK_Pstbar=0.07
+PARAM_gK_Tstbar=2e-05
+
+PARAM_gSK_E2bar=2.0964e-09
+PARAM_gSKv3_1bar=0.04
+
+PARAM_Nap_Et2=1e-06
+PARAM_NaTa_t_soma=2.2
+PARAM_NaTa_t_apical=0.001
+
+shift_NaTa_t=5
+shift_Nap_Et2=0
+shift_K_Pst=0
+shift_SKv3_1=10
+
+a_Ih=23.428
+b_Ih=0.21756
+c_Ih=1.3881e-09
+d_Ih=0.082329
+e_Ih=1.9419e-09
+k_Ih=8.0775
+vh_Ih=-90.963
+ehcn_Ih=-49.765
+

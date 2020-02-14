@@ -1,0 +1,14 @@
+load_file("nrngui.hoc")
+
+load_file("SimulationParameters_PlusSomeDefinitions.hoc")
+
+load_file("ModelSetup.hoc")
+
+load_file("CurrentClampSetup.hoc")
+
+load_file("DefineProcs.hoc")
+
+init()
+
+load_file("VoltageAndCurrentTrace.ses")
+

@@ -1,0 +1,173 @@
+PARAcelsius=34
+PARAM_v_init=-78
+v_init=PARAM_v_init
+PARAM_tstop = 10000
+
+PARAM_ic_hold_amp=0
+
+PARAM_ic_clamp_del=1164.7
+PARAM_ic_clamp_dur=599
+PARAM_ic_clamp_amp=0.3
+
+cvode_active(1)
+cvode.atol(1e-05)
+
+tstop=PARAM_tstop
+v_init=PARAM_v_init
+
+objref Zap
+objref time
+objref voltage
+objref zapcurrent
+objref current
+objref save_time, save_voltage, save_zapcurrent, save_current
+strdef title_time, title_voltage, title_zapcurrent, title_current
+objref NoiseFile
+objref NoiseVector
+strdef noiseinput
+strdef noiseinputmult
+objref pw 
+pw= new PWManager()
+
+objref ic_hold
+access soma
+ic_hold = new IClamp(0.5)
+
+objref ic_clamp
+access soma
+ic_clamp = new IClamp(0.5)
+
+Ihold= PARAM_ic_hold_amp
+Iclamp= PARAM_ic_clamp_amp
+
+ic_hold.del = 0
+ic_hold.dur = PARAM_tstop
+ic_hold.amp = Ihold
+
+ic_clamp.del = PARAM_ic_clamp_del
+ic_clamp.dur = PARAM_ic_clamp_dur
+ic_clamp.amp = Iclamp
+
+
+
+
+
+
+
+
+
+proc setclamp() {
+	Iclamp= $1
+	ic_clamp.amp=Iclamp
+}
+
+
+
+proc setizap() {
+	tstop=$1+$2
+	v_init=PARAM_v_init
+
+	setclamp(0)
+	access soma
+	Zap= new Izap(0.5)	
+	Zap.del=$1
+	Zap.dur=$2
+	Zap.f0=$3
+	Zap.f1=$4
+	Zap.amp=$5
+}
+
+proc recordizap() {
+	setizap($1,$2,$3,$4,$5)	
+
+	time= new Vector()
+	voltage= new Vector()
+	zapcurrent= new Vector()
+
+	time.record(&t)
+	voltage.record(&soma.v(0.5))
+	zapcurrent.record(&Zap.i)
+
+	run()
+
+	save_time= new File()
+	save_voltage= new File()
+	save_zapcurrent= new File()
+
+	sprint(title_time, "ZapData_Kalm_time_%d_%d_%d_%d.csv", Zap.f0, Zap.f1, Zap.amp*100, Zap.dur)
+	sprint(title_voltage, "ZapData_Kalm_voltage_%d_%d_%d_%d.csv", Zap.f0, Zap.f1, Zap.amp*100, Zap.dur)
+	sprint(title_zapcurrent, "ZapData_Kalm_zapcurrent_%d_%d_%d_%d.csv", Zap.f0, Zap.f1, Zap.amp*100, Zap.dur)
+
+
+	save_time.wopen(title_time)
+	save_voltage.wopen(title_voltage)
+	save_zapcurrent.wopen(title_zapcurrent)
+
+	time.printf(save_time)
+	voltage.printf(save_voltage)
+	zapcurrent.printf(save_zapcurrent)
+
+	save_time.close()
+	save_voltage.close()
+	save_zapcurrent.close()
+
+	tstop=PARAM_tstop
+}
+
+proc setizap_DC() {
+	tstop=$1+$2
+
+	setclamp($6)
+	ic_clamp.del=0
+	ic_clamp.dur=tstop
+
+	access soma
+	Zap= new Izap(0.5)
+	
+	Zap.del=$1
+	Zap.dur=$2
+	Zap.f0=$3
+	Zap.f1=$4
+	Zap.amp=$5
+
+}
+
+
+proc recordizap_DC() {
+	setizap_DC($1,$2,$3,$4,$5,$6)	
+	
+
+	time= new Vector()
+	voltage= new Vector()
+	zapcurrent= new Vector()
+
+	time.record(&t)
+	voltage.record(&soma.v(0.5))
+	zapcurrent.record(&Zap.i)
+
+	run()
+
+	save_time= new File()
+	save_voltage= new File()
+	save_zapcurrent= new File()		
+
+	
+	sprint(title_time, "ZapData_Kalm_time_%d_%d_%d_%d_%d.csv", Zap.f0, Zap.f1, Zap.amp*100, Zap.dur, ic_clamp.amp*100)
+	sprint(title_voltage, "ZapData_Kalm_voltage_%d_%d_%d_%d_%d.csv", Zap.f0, Zap.f1, Zap.amp*100, Zap.dur, ic_clamp.amp*100)
+	sprint(title_zapcurrent, "ZapData_Kalm_zapcurrent_%d_%d_%d_%d_%d.csv", Zap.f0, Zap.f1, Zap.amp*100, Zap.dur, ic_clamp.amp*100)
+	
+
+	save_time.wopen(title_time)
+	save_voltage.wopen(title_voltage)
+	save_zapcurrent.wopen(title_zapcurrent)
+
+	time.printf(save_time)
+	voltage.printf(save_voltage)
+	zapcurrent.printf(save_zapcurrent)
+
+	save_time.close()
+	save_voltage.close()
+	save_zapcurrent.close()
+
+	tstop=PARAM_tstop
+}

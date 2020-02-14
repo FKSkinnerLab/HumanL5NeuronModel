@@ -1,0 +1,9 @@
+load_file("nrngui.hoc")
+
+load_file("KalmbachMorphology.hoc")
+
+load_file("Kalmbach_setup.hoc")
+
+load_file("Kalmbach_biophys.hoc")
+
+load_file("VoltageAndCurrentTrace_Kalmbach_laptop.ses")

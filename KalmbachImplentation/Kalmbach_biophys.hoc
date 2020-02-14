@@ -1,0 +1,52 @@
+forsec somatic {
+	insert pas
+	Ra= 304.425
+	cm= 2.72372
+	g_pas= 1.90172e-05
+	e_pas= -79.6515
+} 
+
+forsec axonal {
+	insert pas
+	Ra= 331.682
+	cm= 1.75213
+	g_pas= 0.000479653
+	e_pas= -68.3528
+}
+
+forsec basal {
+	insert pas
+	Ra= 104.085
+	cm= 1.81391
+	g_pas= 4.46002e-06
+	e_pas= -86.6748
+}
+
+forsec apical {
+	insert pas
+	Ra= 393.534
+	cm= 2.91188
+	g_pas= 0.000302942
+	e_pas= -84.5477
+}
+
+
+
+
+forall {
+	insert Ih_mod
+	gbar_Ih_mod= 0.0001
+} 
+
+
+
+/*
+
+forall {
+	insert Ih_me
+	gIhbar_Ih_me=0.0001
+}
+*/
+
+
+
